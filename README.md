@@ -6,44 +6,16 @@ authors:
   - "Sancarn"
 ---
 
-# DON'T STAR THIS REPOSITORY BECAUSE IT IS TEMPORARY AND WILL BE DELETED IN THE FUTURE!
-# THE MAIN DISCUSSION IS [HERE](https://github.com/sancarn/vba-articles/discussions/4)
-
-How to improve performance of VBA macros is a common question on the VBA reddit. In this section we will provide examples of code, and test their performance against each other. We believe it is best to work by example and hope this will give you ideas of how you can improve performance in your projects.
+How to improve performance of VBA macros is a common question on the VBA reddit. In this section we will provide examples of code, and test their performance against eachother. We believe it is best to work by example and hope this will give you ideas of how you can improve performance in your projects.
 
 Performance of routines in this document are calculated using [`stdPerformance.cls`](https://github.com/sancarn/stdVBA/blob/master/src/stdPerformance.cls) which is part of the [`stdVBA` project](https://github.com/sancarn/stdVBA).
-
-<span style="color:red">
-<strong>Proposals that I implemented to the document and in the table</strong>:
-
-- That would be great to make more space between sections, to separate them from each other.
-- I propose to use only percents of performance increasing except of ms because milliseconds are computer dependent and percents not (less dependent).
-- I propose to exclude the cases without any influence on performance, for example S6 #A-1 and A-2.
-- Not a bad idea would be to scale the constants for each test case. I mean following: I prefer to use Sufrace Pro 2 (it's enough for my purposes), but with your C_MAX constants calculations take more than 10 minutes. Would it be better to calculate a scaling constant at first test and multiply all other C_MAX constants on it?
-- As user I want to download the table, press the button and get the results. Therefore, may be the most important proposal is to add the table to Releases:
-
-<span style="color:blue">The performance test table is available at [<ins>link to "Releases"</ins>].</span>
-
-</span>
-
-Notations:
-- 2007/32: Excel 2007 32 bit
-- 2010/32: Excel 2010 32 bit
-- 2019/64: Excel 2019 64 bit
-
-<br>
 
 > **FOREWORD**
 > _This section does expect you to be familiar with VBA already, if you are still new to VBA check out the [resources](https://www.reddit.com/r/vba/wiki/resources) section_
 
-<br>
-
 ### S1) Direct Value Setting
 
 You don't need to select a cell to manipulate it. The following statements are equivalent
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 With stdPerformance.Measure("#1 Select and set", C_MAX)
@@ -59,24 +31,19 @@ With stdPerformance.Measure("#2 Set directly", C_MAX)
   Next
 End With
 ```
-</details>
-<br>
 
 **RESULTS**
 
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:---:|:---:|
-> | 294% | 47% |  -  |
 
-<br>
-<br>
+    S1) Direct Value Setting
+    #1 Select and set: 63 ms  (63µs per iteration)
+    #2 Set directly: 16 ms  (16µs per iteration)
+
+
 
 ### S2) Cut-Paste
 
 Cutting is defined as the act of removing a value from one location and inserting those values into another location. In this test we will test 2 options, one using cut and paste and another using direct value assignment followed by clearing.
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 const C_MAX as long = 1000
@@ -95,26 +62,18 @@ With stdPerformance.Measure("#2 Set directly + clear", C_MAX)
   Next
 End With
 ```
-</details>
-<br>
 
 **RESULTS**
 
 As you can see in the results, direct value assignment is significantly faster than cutting and pasting (and it doesn't alter the clipboard)
 
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:---:|:---:|
-> | 1505% | 454% |  -  |
-
-<br>
-<br>
+    S2) Cut-Paste
+    #1 Cut and paste: 20297 ms (20297µs per operation)
+    #2 Set directly + clear: 1265 ms (1265µs per operation)
 
 ### S3) Use arrays
 
 Using arrays is a common bit of advice to any beginners to improve performance. This demonstrates this fact.
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 Const C_MAX As Long = 50000
@@ -140,28 +99,21 @@ With stdPerformance.Measure("#2 Exporting array in bulk, set values, Import arra
   r.Value2 = v
 End With
 ```
-</details>
-<br>
 
 **RESULTS**
 
 It can be concluded that to insert multiple values into a range it is always better to use `Range(...).value`.
 
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> | 305% | 221% |  -  |
+    S3) Use arrays
+    #1 Looping through individual cells setting values: 1078 ms (21.56µs per operation)
+    #2 Exporting array in bulk, set values, Import array in bulk: 266 ms (5.32µs per operation)
 
-<br>
-<br>
 
-### S4) Options
+### S4) Option 
 
 #### S4a) `Option ScreenUpdating`
 
 Another common suggestion is that `ScreenUpdating` is turned off. `ScreenUpdating` will generally affect any code which could cause a visual change on the worksheet e.g. Setting a cell's value, changing the color of a cell, etc.
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 Const C_MAX As Long = 1000
@@ -178,51 +130,49 @@ With stdPerformance.Measure("#2 w/ ScreenUpdating", C_MAX)
   Application.ScreenUpdating = True
 End With
 ```
-</details>
-<br>
 
 **RESULTS**
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> | 115% | <span style="color:red">-37%</span> |  -  |
 
-<br>
+    #1 Looping through individual cells setting values: 1109 ms (1109µs per operation)
+    #2 w/ ScreenUpdating: 516 ms (516µs per operation)
 
 It is important to note however that repeatedly setting cells is bad practice and if you were doing this using arrays toggling `ScreenUpdating` might have a negative impact as whenever `ScreenUpdating` is set to true it will forcefully update the screen:
 
-<span style="color:red">Double parts are removed from the code below. `v(1) = Empty` is replaced with `cells(1, 1).value = Empty` (since `ScreenUpdating` has no influence on array performance, but on performance of updating of cells).
-</span>
-
-<details>
-  <summary>Source code</summary>
-
 ```vb
 Const C_MAX as Long = 1000
+Dim v(1 To 1) As Long
+With stdPerformance.Measure("#1 Looping through array setting values", C_MAX)
+  For i = 1 To C_MAX
+    v(1) = Empty
+  Next
+End With
+
 With stdPerformance.Measure("#2 w/ ScreenUpdating within loop", C_MAX)
     For i = 1 To C_MAX
       Application.ScreenUpdating= False
-        cells(1, 1).value = Empty
+        v(1) = Empty
       Application.ScreenUpdating= True
     Next
 End With
+
+With stdPerformance.Measure("#3 w/ ScreenUpdating", C_MAX)
+  Application.ScreenUpdating = False
+    For i = 1 To C_MAX
+      v(1) = Empty
+    Next
+  Application.ScreenUpdating = True
+End With
 ```
-</details>
-<br>
 
 **RESULTS**
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> | 26656% | 7272% |  -  |
 
-<br>
-<br>
+    #1 Looping through array setting values: 0 ms (0µs per operation)
+    #2 w/ ScreenUpdating within loop: 4281 ms (4281µs per operation)
+    #3 w/ ScreenUpdating: 16 ms (16µs per operation)
 
 #### S4b) Option `EnableEvents`
 
 On many occasions people online will claim that setting `EnableEvents`to false will greatly speed up your code. But does it really?
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 With stdPerformance.Measure("#1 Looping through individual cells setting values", C_MAX)
@@ -239,55 +189,53 @@ With stdPerformance.Measure("#2 w/ EnableEvents", C_MAX)
   Application.EnableEvents = True
 End With
 ```
-</details>
-<br>
 
 **RESULTS**
 
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> | 71%  |  4%  |  -  |
+    S5) Option EnableEvents
+    #1 Looping through individual cells setting values: 1547 ms  (773.5µs per iteration)
+    #2 w/ EnableEvents: 907 ms  (453.5µs per iteration)
 
 It is important to note however that repeatedly setting cells is bad practice and if you were doing this virtually toggling enable events is only going to have negligible, if not negative impacts depending where the call is made:
 
-<span style="color:red">The code below has been modified to remove the double parts. `v(1) = Empty` is replaced with `cells(1, 1).value = Empty` since EnableEvents does not affect array performance, but it does impact the performance of cell updates.</span>
-
-<details>
-  <summary>Source code</summary>
-
 ```vb
-With stdPerformance.Measure("#3 w/ EnableEvents within loop", C_MAX)
+Dim v(1 To 1) As Long
+With stdPerformance.Measure("#1 Looping through array setting values", C_MAX)
+  For i = 1 To C_MAX
+    v(1) = Empty
+  Next
+End With
+
+With stdPerformance.Measure("#2 w/ EnableEvents within loop", C_MAX)
     For i = 1 To C_MAX
       Application.EnableEvents = False
-        cells(1, 1).value = Empty
+        v(1) = Empty
       Application.EnableEvents = True
     Next
 End With
+
+With stdPerformance.Measure("#3 w/ EnableEvents", C_MAX)
+  Application.EnableEvents = False
+    For i = 1 To C_MAX
+      v(1) = Empty
+    Next
+  Application.EnableEvents = True
+End With
 ```
-</details>
-<br>
 
 **RESULTS**
 
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> | 6931%  |  -1%  |  -  |
+    #1 Looping through array setting values: 15 ms (0.015µs per operation)
+    #2 w/ EnableEvents within loop: 1125 ms (1.125µs per operation)
+    #3 w/ EnableEvents: 16 ms (0.016µs per operation)
 
 #### S4c) Option `Calculation`
 
 Many sources suggest turning off calculation, and performing a manual calculation after edits is faster than continual calculation. In this test we'll test this hypothesis:
 
-<details>
-  <summary>Source code</summary>
-
 ```vb
 Const C_MAX As Long = 50000
 Dim rCell As Range: Set rCell = Sheet1.Range("A1")
-With stdPerformance.Measure("Don't change EnableAnimations", C_MAX)
-  For i = 1 To C_MAX
-    rCell.Formula = "=1"
-  Next
-End With
 With stdPerformance.Measure("Change EnableAnimations setting", C_MAX)
   Application.Calculation = xlCalculationManual
     For i = 1 To C_MAX
@@ -296,39 +244,30 @@ With stdPerformance.Measure("Change EnableAnimations setting", C_MAX)
   Application.Calculation = xlCalculationAutomatic
   Application.Calculate
 End With
+With stdPerformance.Measure("Don't change EnableAnimations", C_MAX)
+  For i = 1 To C_MAX
+    rCell.Formula = "=1"
+  Next
+End With
 ```
-</details>
-<br>
 
 **RESULTS**
 
 It indeed appears to be the case that disabling calculation, and enabling it afterwards has a significant impact on performance of formula evaluation.
 
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> | 203% | 737% |  -  |
+    Change EnableAnimations setting: 1687 ms (33.74µs per operation)
+    Don't change EnableAnimations: 5109 ms (102.18µs per operation)
 
-It should be noted however that this performance impact is only noticeable when changing cells on the worksheet. Either by setting the value directly (range.value) or by setting the formula (range.formula). If instead you are setting the value of an array, changing `Calculation` mode has a slightly negative impact on the code.
-
-<br>
-<br>
+It shouild be noted however that this performance impact is only noticable when changing cells on the worksheet. Either by setting the value directly (range.value) or by setting the formula (range.formula). If instead you are setting the value of an array, changing `calculation` mode has a slightly negative impact on the code.
 
 #### S4d) Option `DisplayStatusBar`
 
 Some sources suggest turning off the StatusBar will speed up macros, because Excel will no longer have to perform status-bar updates. In this test we'll test that hypothesis:
 
-<details>
-  <summary>Source code</summary>
-
 ```vb
 Const C_MAX As Long = 5000000
 With stdPerformance.Optimise   'Disable screen updating and application events
   Dim v
-  With stdPerformance.Measure("Don't change StatusBar", C_MAX)
-    For i = 1 To C_MAX
-      v = ""
-    Next
-  End With
   With stdPerformance.Measure("Change StatusBar setting", C_MAX)
     Application.DisplayStatusBar = False
       For i = 1 To C_MAX
@@ -336,25 +275,22 @@ With stdPerformance.Optimise   'Disable screen updating and application events
       Next
     Application.DisplayStatusBar = True
   End With
+  With stdPerformance.Measure("Don't change StatusBar", C_MAX)
+    For i = 1 To C_MAX
+      v = ""
+    Next
+  End With
 End With
 ```
-</details>
-<br>
 
 **RESULTS**
 
 As shown, changing the status bar will only increase the time the macro runs.
 
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> |  8%  | <span style="color:red">-24%</span> |  -  |
-
-<span style="color:red">NOT IMPLEMENTED:</ins>
+    Change StatusBar setting: 203 ms (0.0406µs per operation)
+    Don't change StatusBar: 188 ms (0.0376µs per operation)
 
 One may suggest that this is only because the statusBar isn't being set, and/or because we are disabling screen updating and application events. So let's remove those and test again:
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 Const C_MAX As Long = 5000
@@ -371,8 +307,6 @@ With stdPerformance.Measure("Don't change StatusBar", C_MAX)
   Next
 End With
 ```
-</details>
-<br>
 
 **RESULTS**
 
@@ -383,9 +317,6 @@ We still see changing the status bar display slows down the code.
 
 So the long and short of it is, it's best to avoid toggling the status bar unless you really want that feature.
 
-<br>
-<br>
-
 #### S4e) Option `DisplayPageBreaks`
 
 Some sources suggest that Option `DisplayPageBreaks` can be used to prevent Excel from calculating page breaks, thus speeding up macro execution.
@@ -394,14 +325,13 @@ Given that this example is much like others we'll only display results this time
 
 In a similar vein to `DisplayStatusBar`, displaying page breaks appears to have a negative impact on performance rather than a positive one.
 
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> |  6%  | <span style="color:red">-67%</span> |  -  |
 
-<br>
-<br>
+    'C_MAX = 1000; Setting range value
+    Change DisplayPageBreaks setting: 828 ms (828µs per operation)
+    Don't change DisplayPageBreaks: 782 ms (782µs per operation)
 
-#### S4f) Option `EnableAnimations`
+
+#### S4e) Option `EnableAnimations`
 
 Some sources claim toggling `EnableAnimations` can speed up performance.
 
@@ -409,14 +339,11 @@ Given that this example is much like others we'll only display results this time
 
 Much like `DisplayStatusBar`, changing `EnableAnimations` appears to have a negative impact on performance rather than a positive one.
 
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> |  2%  | <span style="color:red">-17%</span> |  -  |
+    'C_MAX = 1000; Setting range value
+    Change EnableAnimations setting: 797 ms (797µs per operation)
+    Don't change EnableAnimations: 781 ms (781µs per operation)
 
-<br>
-<br>
-
-#### S4g) Option `PrintCommunication`
+#### S4f) Option `PrintCommunication`
 
 Some sources claim toggling `PrintCommunication` can speed up performance.
 
@@ -428,10 +355,6 @@ Much like `DisplayStatusBar`, changing `PrintCommunication` appears to have a ne
     Change PrintCommunication setting: 797 ms (797µs per operation)
     Don't change PrintCommunication: 781 ms (781µs per operation)
 
-
-<br>
-<br>
-
 ### S5) Using `With` statements
 
 It is often advised to use a `With` statement to increase performance, but how significantly does this affect performance? For this we will test 3 scenarios:
@@ -441,9 +364,6 @@ It is often advised to use a `With` statement to increase performance, but how s
 3. Creating a helper variable to do the data lookup with.
 
 The results vary wildly depending on how deep within an object you go, for this reason we have created a special helper class to perform this test:
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 VERSION 1.0 CLASS
@@ -463,15 +383,10 @@ Private Sub Class_Initialize()
   Data = True
 End Sub
 ```
-</details>
-<br>
 
 The above has a loop which allows us to continuously bury down into depths of the object to see how these affect our results.
 
 Tests have been done up to 10 levels of depth. Here's the tests for the first 3 levels:
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 Const C_MAX As Long = 10000000
@@ -539,15 +454,10 @@ With stdPerformance.Measure("D3,Variable", C_MAX)
 End With
 ...
 ```
-</details>
-<br>
 
 **RESULTS**
 
 You'll note that With blocks behave exactly like use of variables. This is because internally `With` statements do set a special variable to the value assigned to them. In general you can see that both `With` Statements and variables scale adequately to larger and larger depths. On the other hand if no with blocks or variables are used, the time taken scales up indefinitely:
-
-<details>
-  <summary><span style="color:red">I would like to hide this:</span></summary>
 
     D1,No with block: 250 ms (0.025µs per operation)
     D1,With block: 250 ms (0.025µs per operation)
@@ -581,20 +491,11 @@ You'll note that With blocks behave exactly like use of variables. This is becau
     D10,Variable: 250 ms (0.025µs per operation)
 
 An chart view of this data can be found [here](https://i.imgur.com/Aid031a.png).
-</details>
-<br>
-
-> | Sancarn | 2007/32 | 2019/64 |
-> |:-------:|:-------:|:-------:|
-> |  1190%  |  1266%  |  -  |
 
 **A few important notes:**
 
 1) We only get performance benefits when depth is greater than 2. However in this case there are no negative performance impacts either.
 2) This demonstrates that use of variables can still obtain the performance benefits of `With` blocks, which can help get around some limitations with `With blocks. E.G. imagine setting values in a sheet to values in an object:
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 With ThisWorkbook.Sheets(1)
@@ -605,13 +506,8 @@ With ThisWorkbook.Sheets(1)
   End with
 End with
 ```
-</details>
-<br>
 
 Here we can use variables to work around the limitation, while still getting performance benefits:
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 Dim ws as worksheet: set ws = ThisWorkbook.Sheets(1)
@@ -619,21 +515,23 @@ With myObject.someData
   ws.Range("...").value = ,dataProperty
 End with
 ```
-</details>
-<br>
-<br>
 
 ### S6) Late vs Early Binding
 
 It is common knowledge that Late binding is slower than Early binding.
 
-<span style="color:red">A-1 and A-2 are removed because the performance is nearly the same.</span>
-
-<details>
-  <summary>Source code</summary>
-
 ```vb
 Dim r1 As Object, r2 As VBScript_RegExp_55.RegExp
+With stdPerformance.Measure("#A-1 Late bound creation", C_MAX)
+  For i = 1 To C_MAX
+    Set r1 = CreateObject("VBScript.Regexp")
+  Next
+End With
+With stdPerformance.Measure("#A-2 Early bound creation", C_MAX)
+  For i = 1 To C_MAX
+    Set r2 = New VBScript_RegExp_55.RegExp
+  Next
+End With
 
 Set r1 = CreateObject("VBScript.Regexp")
 With stdPerformance.Measure("#B-1 Late bound calls", C_MAX2)
@@ -649,21 +547,18 @@ With stdPerformance.Measure("#B-2 Early bound calls", C_MAX2)
   Next
 End With
 ```
-</details>
-<br>
 
 **RESULTS**
 
-> | Sancarn | 2007/32 | 2019/64 |
-> |:-------:|:-------:|:-------:|
-> |  698%   |  595%   |  -  |
+    S6) Late vs Early Binding
+    #A-1 Late bound creation: 532 ms  (266µs per operation)
+    #A-2 Early bound creation: 515 ms  (257.5µs per operation)
+    #B-1 Late bound calls: 375 ms  (0.375µs per operation)
+    #B-2 Early bound calls: 47 ms  (0.047µs per operation)
 
 Method calls on objects defined using `Dim ... as Object` (late-bound objects) are significantly slower than method calls on strictly typed objects e.g. `Dim ... as Regexp` or `Dim ... as Dictionary`.
 
 Contrary to popular belief this has nothing todo with the use of `CreateObject(...)`. In fact we can do a test:
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 Set r2 = CreateObject("VBScript.Regexp")
@@ -673,15 +568,10 @@ With stdPerformance.Measure("#B-3 Early bound calls via CreateObject", C_MAX2)
   Next
 End With
 ```
-</details>
-<br>
 
 This will perform exactly the same as `#B-2`. 
 
 It is anticipated that `Object` performs so much slower than strict types because `Object` uses the [`IDispatch`](https://docs.microsoft.com/en-us/windows/win32/api/oaidl/nn-oaidl-idispatch) interface of an object. I.E. whenever an object method is called `IDispatch::GetIDsOfNames` is called followed by `IDispatch::Invoke`. Due to the poor performance it is expected that the IDs are not cached for use within the function body, and are instead called each time a function is called. A faster approach would be to call `IDispatch::Invoke` ourselves with known `DispIDs` in scenarios where the object type is known. E.G.
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 'Note `DispGetIDsOfNames` and `DispLetProp` are purely fictional functions. But would likely
@@ -694,22 +584,12 @@ With stdPerformance.Measure("#B-3 Late bound fast dispatch", C_MAX2)
   Next
 End With
 ```
-</details>
-<br>
 
 **CAVEATS**
 
 Using direct references to types makes your code less portable than using `Object` type with `CreateObject`.
 
-<br>
-<br>
-
 ### S7) `ByRef` vs `ByVal`
-
-<span style="color:red">Functions testByVal and testByRef have the same content "Cells(1, 1).Value2 = Rnd()" to slow down execution and get meaningful results of speedup.</span>
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 v = Split(Space(1000)," ")
@@ -724,30 +604,20 @@ With stdPerformance.measure("#2 `ByRef`", C_MAX)
   Next
 End With
 ```
-</details>
-<br>
 
 **RESULTS**
 
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> |  oo  | 449% |  -  |
-
-<br>
-<br>
+    S7) `ByRef` vs `ByVal`
+    #1 `ByVal`: 7594 ms  (75.94µs per operation)
+    #2 `ByRef`: 0 ms  (0µs per operation)
 
 ### S8) `Module` vs `Class`
 
 Many people, myself included, use Classes extensively in our projects to augment data. However using Object-Oriented programming is only an option and the same sort of things can be done in a purely procedural-oriented way using `Type` and `Module` functions.
 
-<details>
-  <summary>Source code</summary>
-
 First we need to create our `Class` and `Module`:
 
 **Car1 class**
-
-<span style="color:red">B-1 and B-2 are removed because the performance is nearly the same.</span>
 
 ```vb
 VERSION 1.0 CLASS
@@ -820,29 +690,45 @@ With stdPerformance.Measure("A-#2 Object creation (Module)", C_MAX)
     c2 = Car2.Car_Create("hello", 10, 2)
   Next
 End With
+
+'Objects for instance tests
+Set c1 = Car1.Create("hello", 10, 2)
+c2 = Car2.Car_Create("hello", 10, 2)
+
+'Test calling public methods speeds
+With stdPerformance.Measure("B-#1 Object method calls (Class)", C_MAX)
+  For i = 1 To C_MAX
+    Call c1.Tick
+  Next
+End With
+With stdPerformance.Measure("B-#2 Object method calls (Module)", C_MAX)
+  For i = 1 To C_MAX
+    Call Car2.Car_Tick(c2)
+  Next
+End With
+
+'Test calling private method speeds
+With stdPerformance.Measure("C-#1 Object private method calls (Class)", C_MAX)
+  Call c1.TestPriv(C_MAX)
+End With
+With stdPerformance.Measure("C-#2 Object private method calls (Module)", C_MAX)
+  Call Car2.TestPriv(c2, C_MAX)
+End With
 ```
-</details>
-<br>
 
 **RESULTS**
 
 From these results we can see that class creation and initialisation is clearly significantly slower than module struct creation, however the calling of methods (and thus also setting of properties) are equally performant.
 
     S8) `Module` vs `Class`
-    
-> | Sancarn | 2007/32 | 2019/64 |
-> |:-------:|:-------:|:-------:|
-> |  463%   |  562%   |  -  |
-
-<br>
-<br>
+    A-#1 Object creation (Class): 704 ms (1.408µs per operation)
+    A-#2 Object creation (Module): 125 ms (0.25µs per operation)
+    B-#1 Object method calls (Class): 31 ms (0.062µs per operation)
+    B-#2 Object method calls (Module): 31 ms (0.062µs per operation)
 
 ### S9) `Variant` vs Typed Data
 
 It is often suggested that you should use Typed data wherever possible for performance reasons.
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 Const C_MAX  As Long = 5000000
@@ -862,26 +748,18 @@ With stdPerformance.Measure("#2 - Type", C_MAX)
     l(i) = i
   Next
 ```
-</details>
-<br>
 
 **RESULTS**
 
 In general this is only a real benefit when dealing with very large datasets (>5 million cells), but it definitely can happen so if you can, always type your data.
 
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> |  32%  | 181% |  -  |
-
-<br>
-<br>
+    S9) `Variant` vs Typed Data
+    #1 - Variant: 62 ms (0.0124µs per operation)
+    #2 - Type: 47 ms (0.0094µs per operation)
 
 ### S10) Bulk range operations
 
 It was anticipated that using `Application.Union()` to create a big range, and then calling delete on this single range would be faster than deleting each row individually. This turned out incorrect.
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 Const C_MAX as long = 5000
@@ -909,26 +787,18 @@ With stdPerformance.Measure("#2 Delete all rows in a single operation less branc
   rng.Delete
 End With
 ```
-</details>
-<br>
 
 **RESULTS**
 
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> |  <span style="color:red">-45%</span>  | 429% |  -  |
-
-<br>
-<br>
+    S11) Bulk range operations
+    #1 Delete rows 1 by 1: 5063 ms  (1012.6µs per operation)
+    #2 Delete all rows in a single operation less branching: 9281 ms  (1856.2µs per operation)
 
 ### S11) When to use advanced filters
 
 In many performance tutorials you will be told to use the Advanced filter to speed up filter operations on data. One might think that Advanced is so much faster than hand crafted techniques that it is always better to use it. 
 
 In order to test this out we'll need some data. In this tutorial I'll use the following function to generate a section of data for us to filter on:
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 'Obtain an array of data to C_MAX size.
@@ -956,8 +826,6 @@ Public Function getArray(C_MAX As Long) As Variant
   getArray = arr
 End Function
 ```
-</details>
-<br>
 
 In this test, we will experiment with 3 different scenarios:
 
@@ -968,11 +836,6 @@ In this test, we will experiment with 3 different scenarios:
 #### S11a) Sheet to Sheet
 
 In scenario 1, we have some data in `Sheet1` and we'd like to obtain a copy of this data on `Sheet2`, filtered where the Key = "A"
-
-<span style="color:red">I have changed the sequence: first is always a slow method, second method is always fast:</ins>.</span>
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 'In this test we are going to try the same thing but where the data is already on the sheet
@@ -985,6 +848,22 @@ Sub scenario1()
   Sheet2.UsedRange.Clear
   
   With stdPerformance.Optimise()
+    'Use advanced filter, copy result and paste to new location. Use range.currentRegion.value to obtain result
+    With stdPerformance.Measure("#1 Advanced filter and copy")
+      'Choose headers
+      Sheet2.Range("A1:B1").Value = Array("ID", "Key")
+      
+      'Choose filter
+      HiddenSheet.Range("A1:A2").Value = Application.Transpose(Array("Key", "A"))
+      'filter and copy data
+      With Sheet1.Range("A1").CurrentRegion
+        Call .AdvancedFilter(xlFilterCopy, HiddenSheet.Range("A1:A2"), Sheet2.Range("A1:B1"))
+      End With
+      
+      'Cleanup
+      HiddenSheet.UsedRange.Clear
+    End With
+    
     'Copy data from sheet into an array,
     'loop through rows, move filtered rows to top of array,
     'only return required size of array
@@ -1009,44 +888,18 @@ Sub scenario1()
       
       Sheet2.Range("A1").Resize(iRet, iColLen).Value = v
     End With
-
-    'Use advanced filter, copy result and paste to new location. Use range.currentRegion.value to obtain result
-    With stdPerformance.Measure("#1 Advanced filter and copy")
-      'Choose headers
-      Sheet2.Range("A1:B1").Value = Array("ID", "Key")
-      
-      'Choose filter
-      HiddenSheet.Range("A1:A2").Value = Application.Transpose(Array("Key", "A"))
-      'filter and copy data
-      With Sheet1.Range("A1").CurrentRegion
-        Call .AdvancedFilter(xlFilterCopy, HiddenSheet.Range("A1:A2"), Sheet2.Range("A1:B1"))
-      End With
-
-      'Cleanup
-      HiddenSheet.UsedRange.Clear
-    End With
-    
   End With
 End Sub
 ```
-</details>
-<br>
 
 **RESULTS**
 
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> |  30%  | 794% |  -  |
-
-<br>
-<br>
+    #1 Advanced filter and copy: 360 ms per operation
+    #2 Use of array: 469 ms per operation
 
 #### S11b) Array to Array
 
 In scenario 2, we have some data in an array, and want a filtered set of IDs as an output. Is it worthwhile writing this data to the sheet and using AdvancedFilter? Or would it be better to filter the array in memory?
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 Sub scenario2()
@@ -1159,8 +1012,6 @@ Sub scenario2()
   End With
 End Sub
 ```
-</details>
-<br>
 
 **RESULTS**
 
@@ -1171,17 +1022,11 @@ End Sub
 
 In reality the time taken for the array/collection methods isn't 0ms for either array or collection, but the calculation was so fast it is impossible to know how much faster it is on such a small amount of data. 
 
-<br>
-<br>
-
 #### S11c) Sheet to Array
 
 In our final scenario, we have some data in `Sheet1` and we'd like to obtain a copy of this data in an array which we require for further processing.
 
 In this case what is faster? Using AdvancedFilter? Or using pure array logic? 
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 Sub scenario3()
@@ -1190,6 +1035,7 @@ Sub scenario3()
   Dim iNumRow As Long: iNumRow = UBound(arr, 1) - LBound(arr, 1) + 1
   Dim iNumCol As Long: iNumCol = UBound(arr, 2) - LBound(arr, 2) + 1
   Sheet1.Range("A1").Resize(iNumRow, iNumCol).Value = arr
+  
   
   With stdPerformance.Optimise()
     'Use advanced filter, copy result and paste to new location. Use range.currentRegion.value to obtain result
@@ -1243,25 +1089,17 @@ Sub scenario3()
   End With
 End Sub
 ```
-</details>
-<br>
 
 **RESULTS**
 
     #1 Advanced filter and copy: 407 ms per operation
     #2 Use of array: 359 ms per operation
 
-In summary, use of AdvancedFilters and arrays are fairly comparable. Use advanced filter if you are trying to keep all data within Excel and you don't need the data in VBA afterwards. However whether you've got the data in VBA to begin with, or you need the data in VBA afterwards, using an array based filter mechanism is preferable.
-
-<br>
-<br>
+In summary, use of AdvancedFilters and arrays are fairly comparable. Use advanced filter if you are trying to keep all data within Excel and you don't need the data in VBA afterwards. However whether you've got the data in VBA to begin with, or you need the data in VBA afterwards, using an array based filter mechanism is prefferable.
 
 ### S12) DLLs vs VBA Libraries
 
 We often think of compiled C libraries from being faster alternatives to pure VBA code, and in some circumstances this is definitely the case. However in this test we are going to compare the following 2 subs:
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 Public Declare PtrSafe Sub VariantCopy Lib "oleaut32.dll" (ByRef pvargDest As Variant, ByRef pvargSrc As Variant)
@@ -1295,16 +1133,13 @@ Sub testVariantCopy()
   End With
 End Sub
 ```
-</details>
-<br>
 
 **RESULTS**
 
 So this shows that there is likely some overhead involved when executing DLL functions, which causes them to be significantly slower than homebrew function calls.
 
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> |  1363%  | 500% |  -  |
+    #1 DLL: 1156 ms (1.156µs per operation)
+    #2 VBA: 79 ms (0.079µs per operation)
 
 Given the slow speeds it is likely that this has something to do with either:
 
@@ -1312,15 +1147,10 @@ Given the slow speeds it is likely that this has something to do with either:
 2. Lack of caching of function address (via GetProcAddress()).
 3. Preparing the arguments of the function call.
 
-<br>
-<br>
 
 ### S13) Helper functions
 
 Helper functions are often used to make code look clean, but do they have a performance impact? In order to test, the following 10 functions will be called:
-
-<details>
-  <summary>Source code</summary>
 
 ```vb
 Function Help1() As Boolean
@@ -1383,12 +1213,10 @@ With stdPerformance.Measure("Help3", 3 * C_MAX)
 End With
 ...
 ```
-</details>
-<br>
 
 **RESULTS**
 
-In this particular scenario it appears that 1-10 were effected by the same degree of delay, and each additional function call adds an additional ~0.03µs delay to the function. In general this isn't something to worry about, however if you are trying to make the most optimal code, it is something to consider.
+In this particular scenario it appears that 1-10 were effected by the same degree of delay, and each additional function call adds an aditional ~0.03µs delay to the function. In general this isn't something to worry about, however if you are trying to make the most optimal code, it is something to consider.
 
     Help0:   15 ms (0.015µs per operation)
     Help1:   31 ms (0.031µs per operation)
@@ -1402,17 +1230,11 @@ In this particular scenario it appears that 1-10 were effected by the same degre
     Help9:  297 ms (0.033µs per operation)
     Help10: 312 ms (0.031µs per operation)
 
-<br>
-<br>
-
 ### D) Data structures
 
 #### D1) Dictionary (Optimising data lookups)
 
-Dictionaries are often used to optimise the lookup of data, as they provide an optimal means of doing these kinds of lookups. In this scenario we choose between 4 separate scenarios. Including using a dictionary.
-
-<details>
-  <summary>Source code</summary>
+Dictionaries are often used to optimise the lookup of data, as they provide an optimal means of doing these kinds of lookups. In this scenario we choose between 4 seperate scenarios. Including using a dictionary.
 
 ```vb
 Sub dictionaryTest()
@@ -1520,14 +1342,12 @@ Public Function getLookupFromCalc(ByVal key As String) As Long
   If iChar = 5 Then getLookupFromCalc = 99
 End Function
 ```
-</details>
-<br>
 
 **RESULTS**
 
-From the below results we can see that the naieve approach of looping through the lookup array did not only produce more ugly code, but also produces significantly slower results. By comparison the dictionary was both clean and fast.
+From the below results we can see that the naieve approach of looping through the lookup array did not only produce more ugly code, but also produces significantly slower results. By comparrison the dictionary was both clean and fast.
 
-The other two tests were to show that actually generating the data directly using the available functions can often be faster than looking up data in a `Dictionary`. This may not be possible in a lot of situations however.
+The other two tests were to show that actually generating the data directly using the available functions can often be faster than looking up data in a `Dictioanry`. This may not be possible in a lot of situations however.
 
 Finally #5 was included because it was surprising to me that including the function in the body of the loop would have that much of an impact on performance.
 
@@ -1536,9 +1356,6 @@ Finally #5 was included because it was surprising to me that including the funct
     #3 Lookup in dictionary - early binding: 360 ms (0.072µs per operation)
     #4 Generate through logic: 1015 ms (0.203µs per operation)
     #5 Generate through logic direct: 469 ms (0.0938µs per operation)
-
-<br>
-<br>
 
 ### A1) Advanced Array Manipulation
 
@@ -1552,7 +1369,7 @@ Further reading:
 
 #### A1a) Resizing and Transposing an array
 
-If you're really keen to `ReDim` an array lightning fast, you can change the dims of the array using [`CopyMemory` and `SafeArray` struct](https://web.archive.org/web/20220121153221/https://bytecomb.com/vba-internals-array-variables-and-pointers-in-depth/)
+If you're really keen to redim an array lightning fast, you can change the dims of the array using [`CopyMemory` and `SafeArray` struct](https://web.archive.org/web/20220121153221/https://bytecomb.com/vba-internals-array-variables-and-pointers-in-depth/)
 
 This at least provides a `xd --> yd` translation.
 
@@ -1570,13 +1387,13 @@ If we want to add a column we simply add 3 elements onto the end:
 
     a11,a21,a31,a12,a22,a32,a13,a23,a33,NEW14,NEW24,NEW34
 
-this is why VBA is capable of `ReDim`-ing this bound, as it is really easy to do. If we want to add a row however we need to change the array as follows:
+this is why VBA is capable of `redim`-ing this bound, as it is really easy to do. If we want to add a row however we need to change the array as follows:
 
     a11,a21,a31,NEW41,a12,a22,a32,NEW42,a13,a23,a33,NEW43
 
     Pending implementation example...
 
-In this case there is still some room for performance gain (we can use `CopyMemory` to copy `UBound(arr,1)` elements at a time into positions e.g. 1, 5, 9 in this case), but it's not so easy to achieve. This is likely one of the reasons why VBA doesn't support `redim`-ing of this bound.
+In this case there is still some room for performance gain (we can use `CopyMemory` to copy `UBound(arr,1)` elements at a time into positions e.g. 1, 5, 9 in this case), but it's not so easy to acheive. This is likely one of the reasons why VBA doesn't support `redim`-ing of this bound.
 
 If we want to Transpose the array we need to change it into a structure like:
 
@@ -1585,125 +1402,3 @@ If we want to Transpose the array we need to change it into a structure like:
 Transposing isn't really possible to optimise in the programming language domain. For this we'd need to optimise byte level machine code.
 
 The most common ways to perform this operation fast is using [`LAPACK`](https://netlib.sandia.gov/lapack/lapack-3.3.1.html) or [`CUDA SDK`](https://developer.nvidia.com/cuda-toolkit). P.S. this is what e.g. Python and FORTRAN use, and why they are so good at statistical programming.
-
-<br>
-<br>
-
-### ST) String operations
-
-The simple concatenation of two strings (`string3 = string1 & string2`) usually works quite fast, but only up to the point where the number of concatenations is small. For example, if you want to store an array of doubles with 150 x 150 elements, you will have to convert it to a string beforehand, which takes a lot of time. To speed up the conversion of the array to a string, there is an internal function called Join that takes a 1-based 1D array and converts it to a string.
-
-<details>
-  <summary>Source code</summary>
-
-```vb
-stringContent = ""
-With stdPerformance.Measure("#1 Concatenation " & C_MAX, C_MAX ^ 2)
-    For i = 1 To C_MAX
-        For j = 1 To C_MAX
-            stringContent = stringContent & notBig2DArray(i, j) & ", "
-        Next j
-        stringContent = stringContent & vbCrLf
-    Next i
-End With
-
-stringContent = ""
-Dim tmpStrings() As Variant
-ReDim tmpStrings(1 To C_MAX)
-Dim tmpDoubles() As Variant
-ReDim tmpDoubles(1 To C_MAX)
-With stdPerformance.Measure("#2 Join " & C_MAX, C_MAX ^ 2)
-    For i = 1 To C_MAX
-        For j = 1 To C_MAX
-            tmpDoubles(j) = notBig2DArray(i, j)
-        Next j
-        tmpStrings(i) = Join(tmpDoubles, ", ")
-    Next i
-    stringContent = Join(tmpStrings, vbCrLf)
-End With
-```
-</details>
-<br>
-
-It should also be mentioned that the concatenation function is a single Excel function with exponential growth in execution time, whereas the `Join` function exhibits almost linear growth in execution time with the size of the array.
-
-<span style="color:red">See figure below. (not yet done)</span>
-
-**RESULTS**
-
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> |  -   | 2263% |  -  |
-
-<br>
-<br>
-
-### W) Writing to file
-
-The majority of answers on StackOverflow regarding file writing in VBA recommend using FSO (`FileSystemObject`). In this chapter, we want to demonstrate that the internal VB functions `Print` and `Put` can accomplish the task more quickly. Each of test cases below stores a string with 2D matrix to a 44.6 Mb file. In all cases the files were written to slow SD card.
-
-#### W1) `FileSystemObject` vs standard writing function (`Print`)
-
-<details>
-  <summary>Source code</summary>
-
-```vb
-With stdPerformance.Measure("#1 Standard writing function", C_MAX)
-    iFile = FreeFile
-    Open Application.ActiveWorkbook.Path & "\" & fileName1 For Output As #iFile
-    Print #iFile, strFileContent
-    Close #iFile
-End With
-
-With stdPerformance.Measure("#2 FSO", C_MAX)
-    Set oFile = fso.CreateTextFile(Application.ActiveWorkbook.Path & "\" & fileName2)
-    oFile.WriteLine strFileContent
-    oFile.Close
-    Set fso = Nothing
-    Set oFile = Nothing
-End With
-```
-</details>
-<br>
-
-**RESULTS**
-
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> |  -   | 56% |  -  |
-
-<br>
-<br>
-
-#### W2) FSO vs binary writing
-
-<details>
-  <summary>Source code</summary>
-
-```vb
-With stdPerformance.Measure("#3 FSO", C_MAX)
-    Set oFile = fso.CreateTextFile(Application.ActiveWorkbook.Path & "\" & fileName1)
-    oFile.WriteLine strFileContent
-    oFile.Close
-    Set fso = Nothing
-    Set oFile = Nothing
-End With
-
-With stdPerformance.Measure("#4 Binary writing function", C_MAX)
-    iFile = FreeFile
-    Open Application.ActiveWorkbook.Path & "\" & fileName2 For Binary As #iFile
-    Put #iFile, , strFileContent
-    Close #iFile
-End With
-```
-</details>
-<br>
-
-**RESULTS**
-
-> | Sancarn | 2007/32 | 2019/64 |
-> |:----:|:----:|:---:|
-> |  -   | 69% |  -  |
-
-<br>
-<br>
