@@ -18,11 +18,10 @@ Performance of routines in this document are calculated using [`stdPerformance.c
 
 - That would be great to make more space between sections, to separate them from each other.
 - I propose to use only percents of performance increasing except of ms because milliseconds are computer dependent and percents not (less dependent).
-- I propose to exclude the cases without any influence on performance, for example S6 #A-1 and A-2.
 - Not a bad idea would be to scale the constants for each test case. I mean following: I prefer to use Sufrace Pro 2 (it's enough for my purposes), but with your C_MAX constants calculations take more than 10 minutes. Would it be better to calculate a scaling constant at first test and multiply all other C_MAX constants on it?
 - As user I want to download the table, press the button and get the results. Therefore, may be the most important proposal is to add the table to Releases:
 
-<span style="color:blue">The performance test table is available [HERE](https://github.com/Excel-lent/VBA-performance-tests/releases/download/v0.0.2-beta/Performance.tests.xlsm).</span>
+<span style="color:blue">The performance test table is available [HERE](https://github.com/Excel-lent/VBA-performance-tests/releases/download/v0.0.3-beta/Performance.tests.xlsm).</span>
 
 - The results in percents for each Excel version are stored in sheet "Results". I Used the same table on 3 different computers (Surface Pro 2 with Excel 2007, some old one with Excel 2010 and i7 with Excel 2019 64 bit). Sancarn, I do not know which version you have, therefore, your results are shown separately.
 - May be the most important: I cannot guarantee the correctness. You know, there is always room for errors in the code.
@@ -627,13 +626,21 @@ End with
 
 It is common knowledge that Late binding is slower than Early binding.
 
-<span style="color:red">A-1 and A-2 are removed because the performance is nearly the same.</span>
-
 <details>
   <summary>Source code</summary>
 
 ```vb
 Dim r1 As Object, r2 As VBScript_RegExp_55.RegExp
+With stdPerformance.Measure("#A-1 Late bound creation", C_MAX)
+  For i = 1 To C_MAX
+    Set r1 = CreateObject("VBScript.Regexp")
+  Next
+End With
+With stdPerformance.Measure("#A-2 Early bound creation", C_MAX)
+  For i = 1 To C_MAX
+    Set r2 = New VBScript_RegExp_55.RegExp
+  Next
+End With
 
 Set r1 = CreateObject("VBScript.Regexp")
 With stdPerformance.Measure("#B-1 Late bound calls", C_MAX2)
@@ -653,6 +660,13 @@ End With
 <br>
 
 **RESULTS**
+Late bound vs early bound creation:
+> | Sancarn | 2007/32 | 2010/32 | 2019/64 |
+> |:-------:|:-------:|:-------:|:-------:|
+> |    3%   |   -19%  |   -8%   |   -6%   |
+
+
+Late bound vs early bound calls:
 > | Sancarn | 2007/32 | 2010/32 | 2019/64 |
 > |:-------:|:-------:|:-------:|:-------:|
 > |   698%  |   639%  |   609%  |  1018%  |
@@ -1603,7 +1617,7 @@ The most common ways to perform this operation fast is using [`LAPACK`](https://
 
 ### ST) String operations
 
-The simple concatenation of two strings (`string3 = string1 & string2`) usually works quite fast, but only up to the point where the number of concatenations is small. For example, if you want to store an array of doubles with 150 x 150 elements, you will have to convert it to a string beforehand, which takes a lot of time. To speed up the conversion of the array to a string, there is an internal function called Join that takes a 1-based 1D array and converts it to a string.
+The simple concatenation of two strings (`string3 = string1 & string2`) usually works quite fast, but only up to the point where the number of concatenations is small. For example, if you want to store an array of doubles with 150 x 150 elements, you will have to convert it to a string and use concatenation, which takes a lot of time. To speed up the conversion of the array to a string, there is an internal function `Join` that takes a 1-based 1D array and converts it to a string.
 
 <details>
   <summary>Source code</summary>
@@ -1637,9 +1651,13 @@ End With
 </details>
 <br>
 
-It should also be mentioned that the concatenation function is a single Excel function with exponential growth of execution time, whereas the `Join` function exhibits almost linear growth in execution time with the size of the array.
+It should also be mentioned that the concatenation function is a single Excel function with exponential growth of execution time, whereas the `Join` function exhibits almost linear growth in execution time with the size of the array:
+
+![Comparison of measured `Join` and concatenation times as a function of square array](./Pictures/Join%20vs%20concatenation.jpg)
 
 **RESULTS**
+
+Performance gain of `Join` relative to concatenation for conversion of 140*140 matrix to a string:
 > | Sancarn | 2007/32 | 2010/32 | 2019/64 |
 > |:-------:|:-------:|:-------:|:-------:|
 > |    -    |  6033%  |  6731%  |  2594%  |
